@@ -1,6 +1,6 @@
 === Online Now ===
 Contributors:      bordoni
-Tags:              ysers, registred users, online, whos online
+Tags:              users, registred users, online, whos online
 Requires at least: 3.5
 Tested up to:      4.0
 Stable tag:        trunk
