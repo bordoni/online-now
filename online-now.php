@@ -50,12 +50,16 @@ Class OnlineNow {
 			return false;
 		}
 
+		// Apply the needed actions
 		add_action( 'wp_login', array( self::instance(), 'login' ), 10, 2 );
 		add_action( 'clear_auth_cookie', array( self::instance(), 'logout' ), 10 );
 
 		// Register Shortcodes
 		add_shortcode( 'online:list', array( self::instance(), 'shortcode_list' ) );
 		add_shortcode( 'online:qty', array( self::instance(), 'shortcode_qty' ) );
+
+		// To allow easier control this plugin will parse the shortcodes on Widgets
+		add_filter('widget_text', 'do_shortcode');
 
 		return true;
 	}
@@ -83,7 +87,7 @@ Class OnlineNow {
 	 *
 	 */
 	public function logout() {
-		$users = self::$prefix . '-users', array() );
+		$users = get_option( self::$prefix . '-users', array() );
 
 		$user_id = get_current_user_id();
 
@@ -166,11 +170,11 @@ Class OnlineNow {
 		$users = $this->get_users( $atts->include, $atts->exclude );
 
 		$html = '<ul class="users-online">';
-		foreach ( (array) $users as $user_id ) {
+		foreach ( (array) $users as $user ) {
 			$html .= '<li>';
 			// Allow the user to control the avatar size and if he wants to show
 			if ( is_numeric( $atts->avatar ) ){
-				$html .= get_avatar( $user->ID , $atts->avatar );
+				$html .= get_avatar( $user , $atts->avatar );
 			}
 			$html .= '<span>' . $user->display_name . '</span>';
 			$html .= '</li>';
