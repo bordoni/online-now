@@ -91,7 +91,7 @@ Class OnlineNow {
 
 		$user_id = get_current_user_id();
 
-		if ( in_array( $user_id, $users ) ){
+		if ( ! in_array( $user_id, $users ) ){
 			return;
 		}
 
