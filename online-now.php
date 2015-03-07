@@ -3,7 +3,7 @@
  * Plugin Name:       Online Now
  * Plugin URI:        http://bordoni.me/wordpress/display-online-users-wordpress/
  * Description:       An quick plugin that will allow you to show which registred users are online right now
- * Version:           0.1.0
+ * Version:           0.1.1
  * Author:            Gustavo Bordoni
  * Author URI:        http://bordoni.me
  * Text Domain:       online-now
@@ -165,21 +165,27 @@ Class OnlineNow {
 
 			'exclude' => '',
 			'include' => '',
+			'zero_text' => esc_attr__( 'There are no users online right now', 'online-now' ),
 		), $atts );
+		$html = '';
 
 		$users = $this->get_users( $atts->include, $atts->exclude );
 
-		$html = '<ul class="users-online">';
-		foreach ( (array) $users as $user ) {
-			$html .= '<li>';
-			// Allow the user to control the avatar size and if he wants to show
-			if ( is_numeric( $atts->avatar ) ){
-				$html .= get_avatar( $user , $atts->avatar );
+		if ( ! empty( $users ) ){
+			$html .= '<ul class="users-online">';
+			foreach ( (array) $users as $user ) {
+				$html .= '<li>';
+				// Allow the user to control the avatar size and if he wants to show
+				if ( is_numeric( $atts->avatar ) ){
+					$html .= get_avatar( $user , $atts->avatar );
+				}
+				$html .= '<span>' . $user->display_name . '</span>';
+				$html .= '</li>';
 			}
-			$html .= '<span>' . $user->display_name . '</span>';
-			$html .= '</li>';
+			$html .= '</ul>';
+		} else {
+			$html .= '<p>' . $atts->zero_text . '</p>';
 		}
-		$html .= '</ul>';
 		return $html;
 	}
 
