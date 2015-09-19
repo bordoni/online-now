@@ -27,5 +27,12 @@ Thank you for wanting to make Online Now better for everyone! [We salute you](ht
 
 == Changelog ==
 
+= 0.2.0 =
+* Feature: Now the plugin tracks the users to check if they are still online
+* Feature: Included a method to check if the current User is online
+
+= 0.1.1 =
+* Tweak: Added a Zero text to the listing shortcode
+
 = 0.1.0 =
-* Had the idea to the Post and Created the first draft of the Plugin
+* Feature: Had the idea to the Post and Created the first draft of the Plugin

@@ -18,7 +18,7 @@ if ( ! defined( 'WPINC' ) ){
 	die;
 }
 
-Class OnlineNow {
+class OnlineNow {
 	/**
 	 * Holds the Static instance of this class
 	 * @var OnlineNow
@@ -35,8 +35,8 @@ Class OnlineNow {
 	 * [instance description]
 	 * @return OnlineNow return a static instance of this class
 	 */
-	static public function instance(){
-		null === self::$_instance and self::$_instance = new self;
+	public static function instance() {
+		null === self::$_instance && self::$_instance = new self;
 		return self::$_instance;
 	}
 
@@ -44,7 +44,7 @@ Class OnlineNow {
 	 * Initalized the plugin main class
 	 * @return bool Boolean on if the init process was successful
 	 */
-	static public function init(){
+	public static function init() {
 		// Lock this class to be initialized only once
 		if ( null !== self::$_instance ){
 			return false;
@@ -53,51 +53,89 @@ Class OnlineNow {
 		// Apply the needed actions
 		add_action( 'wp_login', array( self::instance(), 'login' ), 10, 2 );
 		add_action( 'clear_auth_cookie', array( self::instance(), 'logout' ), 10 );
+		add_action( 'set_current_user', array( self::instance(), 'login' ), 15 );
+		add_action( 'init', array( self::instance(), 'reset_everyone' ), 15 );
 
 		// Register Shortcodes
 		add_shortcode( 'online:list', array( self::instance(), 'shortcode_list' ) );
 		add_shortcode( 'online:qty', array( self::instance(), 'shortcode_qty' ) );
 
 		// To allow easier control this plugin will parse the shortcodes on Widgets
-		add_filter('widget_text', 'do_shortcode');
+		add_filter( 'widget_text', 'do_shortcode' );
 
 		return true;
 	}
 
 	/**
 	 * Whenever a user logs in we register it to a option in the database
+	 * @todo  Modify the plugin to allow reseting each user at a specific timeout
 	 *
 	 * @param  string $user_login Username
 	 * @param  WP_User $user      The object that tells what user we are dealing with
 	 */
-	public function login( $user_login, $user ) {
+	public function login( $user_login = null, $user = null ) {
 		$users = get_option( self::$prefix . '-users', array() );
 
-		if ( in_array( $user->ID, $users ) ){
-			return;
+		// Make sure we have an user object
+		if ( is_null( $user ) ){
+			$user = wp_get_current_user();
 		}
 
+		// Check if the user is curretly set
+		if ( ! $user->exists() ){
+			return false;
+		}
+
+		// If the user is already in the list we leave
+		if ( in_array( $user->ID, $users ) ){
+			return false;
+		}
+
+		// Append the user ID to the List of online users
 		$users[] = $user->ID;
 
-		update_option( self::$prefix . '-users', $users );
+		return update_option( self::$prefix . '-users', $users );
 	}
 
 	/**
 	 * Whenever a User logs out we remove its ID from the Database option
 	 *
+	 * @return bool Wether the current user was removed
 	 */
-	public function logout() {
+	public function logout( $user = null ) {
 		$users = get_option( self::$prefix . '-users', array() );
 
-		$user_id = get_current_user_id();
-
-		if ( ! in_array( $user_id, $users ) ){
-			return;
+		// Make sure we have an user object
+		if ( is_null( $user ) ){
+			$user = wp_get_current_user();
 		}
 
-		update_option( self::$prefix . '-users', array_diff( $users , array( $user_id ) ) );
+		// Check if the user is curretly set
+		if ( ! $user->exists() ){
+			return false;
+		}
+
+		// If the user is not in the list we leave
+		if ( ! in_array( $user->ID, $users ) ){
+			return false;
+		}
+
+		return update_option( self::$prefix . '-users', array_diff( $users, array( $user->ID ) ) );
 	}
 
+	/**
+	 * Resets the users online every X amount of time
+	 */
+	public function reset_everyone( $force = false ) {
+		$interval_timeout = apply_filters( 'onlinenow-interval_timeout', 5 * MINUTE_IN_SECONDS );
+		$current_timeout = get_option( self::$prefix . '-timeout', 0 );
+
+		if ( $current_timeout <= time() || true === $force ){
+			return update_option( self::$prefix . '-users', array( get_current_user_id() ) ) && update_option( self::$prefix . '-timeout', time() + $interval_timeout );
+		}
+
+		return false;
+	}
 
 	/**
 	 * A method to grab the users online from the database
@@ -105,7 +143,7 @@ Class OnlineNow {
 	 * @param  array  $exclude [description]
 	 * @return array           Users currently online, array of IDs
 	 */
-	public function get_users( $include = array(), $exclude = array() ){
+	public function get_users( $include = array(), $exclude = array() ) {
 		// Retrieve the users from Database
 		$users = get_option( self::$prefix . '-users', array() );
 
@@ -142,7 +180,7 @@ Class OnlineNow {
 	 * @param  int $user_id    The user id
 	 * @return bool/WP_User    Returns the WP_User object if valid ID
 	 */
-	public function user_exists( $user_id ){
+	public function user_exists( $user_id ) {
 		$user = new WP_User( $user_id );
 
 		// Check if the users exists
@@ -177,7 +215,7 @@ Class OnlineNow {
 				$html .= '<li>';
 				// Allow the user to control the avatar size and if he wants to show
 				if ( is_numeric( $atts->avatar ) ){
-					$html .= get_avatar( $user , $atts->avatar );
+					$html .= get_avatar( $user, $atts->avatar );
 				}
 				$html .= '<span>' . $user->display_name . '</span>';
 				$html .= '</li>';
@@ -225,4 +263,5 @@ Class OnlineNow {
 	}
 }
 
-OnlineNow::init();
+// Actually Load the plugin
+add_action( 'plugins_loaded', array( 'OnlineNow', 'init' ) );
