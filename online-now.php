@@ -3,7 +3,7 @@
  * Plugin Name:       Online Now
  * Plugin URI:        http://bordoni.me/wordpress/display-online-users-wordpress/
  * Description:       An quick plugin that will allow you to show which registred users are online right now
- * Version:           0.1.1
+ * Version:           0.2.0
  * Author:            Gustavo Bordoni
  * Author URI:        http://bordoni.me
  * Text Domain:       online-now

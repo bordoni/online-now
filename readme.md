@@ -6,7 +6,7 @@ Online Now is a very small plugin that will help you to show which registred use
 **Contributors:** [bordoni](http://profiles.wordpress.org/bordoni)  
 **Tags:** [users](http://wordpress.org/plugins/tags/users), [registred users](http://wordpress.org/plugins/tags/registred users), [online](http://wordpress.org/plugins/tags/online), [whos online](http://wordpress.org/plugins/tags/whos online)  
 **Requires at least:** 3.5  
-**Tested up to:** 4.0  
+**Tested up to:** 4.4  
 **Stable tag:** trunk (master)  
 **License:** [GPLv2 or later](http://www.gnu.org/licenses/gpl-2.0.html)  
 
@@ -24,7 +24,14 @@ Thank you for wanting to make Online Now better for everyone! [We salute you](ht
 
 ## Changelog ##
 
+### 0.2.0 ###
+* Feature: Now the plugin tracks the users to check if they are still online
+* Feature: Included a method to check if the current User is online
+
+### 0.1.1 ###
+* Tweak: Added a Zero text to the listing shortcode
+
 ### 0.1.0 ###
-* Had the idea to the Post and Created the first draft of the Plugin
+* Feature: Had the idea to the Post and Created the first draft of the Plugin
 
 
