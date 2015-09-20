@@ -138,6 +138,24 @@ class OnlineNow {
 	}
 
 	/**
+	 * Check if the user is Online
+	 *
+	 * @param  integer|WP_User $user The user ID or WP_User object
+	 *
+	 * @return boolean       Whether the user is online or not
+	 */
+	public function is_user_online( $user = 0 ) {
+		$user = $this->user_exists( $user );
+		if ( ! $user ){
+			return false;
+		}
+
+		$users = $this->get_users();
+
+		return in_array( $user->ID, $users );
+	}
+
+	/**
 	 * A method to grab the users online from the database
 	 * @param  array  $include [description]
 	 * @param  array  $exclude [description]
@@ -265,3 +283,13 @@ class OnlineNow {
 
 // Actually Load the plugin
 add_action( 'plugins_loaded', array( 'OnlineNow', 'init' ) );
+
+
+/**
+ * Creates a Globally Acessible version of OnlineNow->is_user_online()
+ */
+if ( ! function_exists( 'is_user_onlinenow' ) ){
+	function is_user_onlinenow( $user = 0 ) {
+		return OnlineNow::instance()->is_user_online( $user );
+	}
+}
