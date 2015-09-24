@@ -27,6 +27,9 @@ Thank you for wanting to make Online Now better for everyone! [We salute you](ht
 
 == Changelog ==
 
+= 0.2.1 =
+* Fix: Resolve the Login and Logout problem with non-existent user
+
 = 0.2.0 =
 * Feature: Now the plugin tracks the users to check if they are still online
 * Feature: Included a method to check if the current User is online
