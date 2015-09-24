@@ -111,7 +111,7 @@ class OnlineNow {
 		}
 
 		// Check if the user is curretly set
-		if ( ! $user->exists() ){
+		if ( ! $user instanceof WP_User || ! $user->exists() ){
 			return false;
 		}
 
