@@ -3,7 +3,7 @@
  * Plugin Name:       Online Now
  * Plugin URI:        http://bordoni.me/wordpress/display-online-users-wordpress/
  * Description:       An quick plugin that will allow you to show which registred users are online right now
- * Version:           0.2.1
+ * Version:           0.3.0
  * Author:            Gustavo Bordoni
  * Author URI:        http://bordoni.me
  * Text Domain:       online-now
@@ -14,7 +14,7 @@
  */
 
 // If this file is called directly, abort.
-if ( ! defined( 'WPINC' ) ){
+if ( ! defined( 'WPINC' ) ) {
 	die;
 }
 
@@ -77,19 +77,84 @@ class OnlineNow {
 		$users = get_option( self::$prefix . '-users', array() );
 
 		// Make sure we have an user object
-		if ( is_null( $user ) ){
+		if ( is_null( $user ) ) {
 			$user = wp_get_current_user();
 		}
 
 		// Check if the user is curretly set
-		if ( ! $user instanceof WP_User || ! $user->exists() ){
+		if ( ! $user instanceof WP_User || ! $user->exists() ) {
 			return false;
 		}
 
 		// Append this User to the List
 		$users[ $user->ID ] = date( 'Y-m-d H:i:s' );
 
+		// Re-order after adding the user
+		asort( $users );
+
 		return update_option( self::$prefix . '-users', $users );
+	}
+
+	/**
+	 * Whenever a User logs out we remove its ID from the Database option
+	 *
+	 * @return bool Wether the current user was removed
+	 */
+	public function logout( $user = null ) {
+		$users = get_option( self::$prefix . '-users', array() );
+
+		// Make sure we have an user object
+		if ( is_null( $user ) ) {
+			$user = wp_get_current_user();
+		}
+
+		// Check if the user is curretly set
+		if ( ! $user instanceof WP_User || ! $user->exists() ) {
+			return false;
+		}
+
+		// If the user is not in the list we leave
+		if ( isset( $users[ $user->ID ] ) ) {
+			return false;
+		}
+
+		// Check if we can Remove from the List
+		if ( $this->get_purge_threshold() >= count( $users ) ) {
+			return false;
+		}
+
+		unset( $users[ $user->ID ] );
+
+		// Re-order after removing the user
+		asort( $users );
+
+		return update_option( self::$prefix . '-users', $users );
+	}
+
+	/**
+	 * Resets the users online every X amount of time
+	 */
+	public function reset_everyone( $force = false ) {
+		$interval_timeout = apply_filters( 'onlinenow-interval_timeout', 5 * MINUTE_IN_SECONDS );
+		$current_timeout = get_option( self::$prefix . '-timeout', 0 );
+		$users = get_option( self::$prefix . '-users', array() );
+
+		if ( $current_timeout <= time() || true === $force ) {
+			$i = 0;
+			foreach ( $users as $user_id => $time ) {
+				$i++;
+				// Only remove on the Purge Threshold
+				if ( $i < $this->get_purge_threshold() ) {
+					continue;
+				}
+
+				unset( $users[ $user_id ] );
+			}
+
+			return update_option( self::$prefix . '-users', array( get_current_user_id() => date( 'Y-m-d H:i:s' ) ) ) && update_option( self::$prefix . '-timeout', time() + $interval_timeout );
+		}
+
+		return false;
 	}
 
 	/**
@@ -103,53 +168,6 @@ class OnlineNow {
 	}
 
 	/**
-	 * Whenever a User logs out we remove its ID from the Database option
-	 *
-	 * @return bool Wether the current user was removed
-	 */
-	public function logout( $user = null ) {
-		$users = get_option( self::$prefix . '-users', array() );
-
-		// Make sure we have an user object
-		if ( is_null( $user ) ){
-			$user = wp_get_current_user();
-		}
-
-		// Check if the user is curretly set
-		if ( ! $user instanceof WP_User || ! $user->exists() ){
-			return false;
-		}
-
-		// If the user is not in the list we leave
-		if ( isset( $users[ $user->ID ] ) ){
-			return false;
-		}
-
-		// Check if we can Remove from the List
-		if ( $this->get_purge_threshold() >= count( $users ) ) {
-			return false;
-		}
-
-		unset( $users[ $user->ID ] );
-
-		return update_option( self::$prefix . '-users', $users ) );
-	}
-
-	/**
-	 * Resets the users online every X amount of time
-	 */
-	public function reset_everyone( $force = false ) {
-		$interval_timeout = apply_filters( 'onlinenow-interval_timeout', 5 * MINUTE_IN_SECONDS );
-		$current_timeout = get_option( self::$prefix . '-timeout', 0 );
-
-		if ( $current_timeout <= time() || true === $force ){
-			return update_option( self::$prefix . '-users', array( get_current_user_id() => date( 'Y-m-d H:i:s' ) ) ) && update_option( self::$prefix . '-timeout', time() + $interval_timeout );
-		}
-
-		return false;
-	}
-
-	/**
 	 * Check if the user is Online
 	 *
 	 * @param  integer|WP_User $user The user ID or WP_User object
@@ -158,7 +176,7 @@ class OnlineNow {
 	 */
 	public function is_user_online( $user = 0 ) {
 		$user = $this->user_exists( $user );
-		if ( ! $user ){
+		if ( ! $user ) {
 			return false;
 		}
 
@@ -180,7 +198,7 @@ class OnlineNow {
 		$users = get_option( self::$prefix . '-users', array() );
 
 		// Parse Shortcode atts to exclude
-		if ( is_string( $exclude ) ){
+		if ( is_string( $exclude ) ) {
 			$exclude = array_map( 'trim', explode( ',', $exclude ) );
 		}
 
@@ -196,7 +214,7 @@ class OnlineNow {
 		}
 
 		// Parse Shortcode atts to include
-		if ( is_string( $include ) ){
+		if ( is_string( $include ) ) {
 			$include = array_map( 'trim', explode( ',', $include ) );
 		}
 
@@ -214,21 +232,15 @@ class OnlineNow {
 		// Garantee that the array is safe for usage
 		$users = array_filter( (array) $users );
 
-		// Fetch the users IDs
-		$ids = array_keys( $users );
-
-		// Remove all non existent users
-		$existing_users = array_map( array( $this, 'user_exists' ), $ids );
-
 		// Loop and Unset non-existent
-		foreach ( (array) $existing_users as $id ) {
+		foreach ( (array) $users as $user_id => $time ) {
 			// Prevent Fatals
-			if ( ! isset( $users[ $id ] ) ) {
+			if ( $this->user_exists( $user_id ) ) {
 				continue;
 			}
 
 			// Actually Remove
-			unset( $users[ $id ] );
+			unset( $users[ $user_id ] );
 		}
 
 		return $users;
@@ -245,11 +257,11 @@ class OnlineNow {
 		$user = new WP_User( $user_id );
 
 		// Check if the users exists
-		if ( ! $user->exists() ){
+		if ( ! $user->exists() ) {
 			return false;
 		}
 
-		return $user;
+		return true;
 	}
 
 	/**
@@ -270,13 +282,17 @@ class OnlineNow {
 		$html = '';
 
 		$users = $this->get_users( $atts->include, $atts->exclude );
+		$objects = array();
+		foreach ( $users as $id => $time ) {
+			$objects[] = new WP_User( $id );
+		}
 
-		if ( ! empty( $users ) ){
+		if ( ! empty( $users ) ) {
 			$html .= '<ul class="users-online">';
-			foreach ( (array) $users as $user => $time ) {
+			foreach ( (array) $objects as $user ) {
 				$html .= '<li>';
 				// Allow the user to control the avatar size and if he wants to show
-				if ( is_numeric( $atts->avatar ) ){
+				if ( is_numeric( $atts->avatar ) ) {
 					$html .= get_avatar( $user, $atts->avatar );
 				}
 				$html .= '<span>' . $user->display_name . '</span>';
@@ -309,7 +325,7 @@ class OnlineNow {
 
 		$users = $this->get_users( $atts->include, $atts->exclude );
 
-		if ( $atts->numeric ){
+		if ( $atts->numeric ) {
 			return count( $users );
 		}
 
@@ -331,7 +347,7 @@ add_action( 'plugins_loaded', array( 'OnlineNow', 'instance' ) );
 /**
  * Creates a Globally Acessible version of OnlineNow->is_user_online()
  */
-if ( ! function_exists( 'is_user_onlinenow' ) ){
+if ( ! function_exists( 'is_user_onlinenow' ) ) {
 	function is_user_onlinenow( $user = 0 ) {
 		return OnlineNow::instance()->is_user_online( $user );
 	}
