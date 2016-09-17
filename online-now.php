@@ -35,7 +35,7 @@ class OnlineNow {
 	 * Holds the Static instance of this class
 	 * @var int
 	 */
-	private static $purge_threshold = 0;
+	private static $purge_threshold = 3;
 
 	/**
 	 * [instance description]
@@ -76,6 +76,9 @@ class OnlineNow {
 	public function login( $user_login = null, $user = null ) {
 		$users = get_option( self::$prefix . '-users', array() );
 
+		// Always Sort
+		arsort( $users );
+
 		// Make sure we have an user object
 		if ( is_null( $user ) ) {
 			$user = wp_get_current_user();
@@ -90,7 +93,7 @@ class OnlineNow {
 		$users[ $user->ID ] = date( 'Y-m-d H:i:s' );
 
 		// Re-order after adding the user
-		asort( $users );
+		arsort( $users );
 
 		return update_option( self::$prefix . '-users', $users );
 	}
@@ -102,6 +105,9 @@ class OnlineNow {
 	 */
 	public function logout( $user = null ) {
 		$users = get_option( self::$prefix . '-users', array() );
+
+		// Always Sort
+		arsort( $users );
 
 		// Make sure we have an user object
 		if ( is_null( $user ) ) {
@@ -126,7 +132,7 @@ class OnlineNow {
 		unset( $users[ $user->ID ] );
 
 		// Re-order after removing the user
-		asort( $users );
+		arsort( $users );
 
 		return update_option( self::$prefix . '-users', $users );
 	}
@@ -138,6 +144,9 @@ class OnlineNow {
 		$interval_timeout = apply_filters( 'onlinenow-interval_timeout', 5 * MINUTE_IN_SECONDS );
 		$current_timeout = get_option( self::$prefix . '-timeout', 0 );
 		$users = get_option( self::$prefix . '-users', array() );
+
+		// Always Sort
+		arsort( $users );
 
 		if ( $current_timeout <= time() || true === $force ) {
 			$i = 0;
@@ -151,7 +160,7 @@ class OnlineNow {
 				unset( $users[ $user_id ] );
 			}
 
-			return update_option( self::$prefix . '-users', array( get_current_user_id() => date( 'Y-m-d H:i:s' ) ) ) && update_option( self::$prefix . '-timeout', time() + $interval_timeout );
+			return update_option( self::$prefix . '-users', $users ) && update_option( self::$prefix . '-timeout', time() + $interval_timeout );
 		}
 
 		return false;
@@ -196,6 +205,9 @@ class OnlineNow {
 	public function get_users( $include = array(), $exclude = array() ) {
 		// Retrieve the users from Database
 		$users = get_option( self::$prefix . '-users', array() );
+
+		// Always Sort
+		arsort( $users );
 
 		// Parse Shortcode atts to exclude
 		if ( is_string( $exclude ) ) {
