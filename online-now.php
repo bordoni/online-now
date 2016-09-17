@@ -23,42 +23,42 @@ class OnlineNow {
 	 * Holds the Static instance of this class
 	 * @var OnlineNow
 	 */
-	static protected $_instance = null;
+	private static $instance;
 
 	/**
 	 * Holds the Static instance of this class
-	 * @var OnlineNow
+	 * @var string
 	 */
-	static protected $prefix = 'OnlineNow';
+	private static $prefix = 'OnlineNow';
+
+	/**
+	 * Holds the Static instance of this class
+	 * @var int
+	 */
+	private static $purge_threshold = 0;
 
 	/**
 	 * [instance description]
 	 * @return OnlineNow return a static instance of this class
 	 */
 	public static function instance() {
-		null === self::$_instance && self::$_instance = new self;
-		return self::$_instance;
+		return self::$instance ? self::$instance : self::$instance = new self;
 	}
 
 	/**
 	 * Initalized the plugin main class
 	 * @return bool Boolean on if the init process was successful
 	 */
-	public static function init() {
-		// Lock this class to be initialized only once
-		if ( null !== self::$_instance ){
-			return false;
-		}
-
+	private function __construct() {
 		// Apply the needed actions
-		add_action( 'wp_login', array( self::instance(), 'login' ), 10, 2 );
-		add_action( 'clear_auth_cookie', array( self::instance(), 'logout' ), 10 );
-		add_action( 'set_current_user', array( self::instance(), 'login' ), 15 );
-		add_action( 'init', array( self::instance(), 'reset_everyone' ), 15 );
+		add_action( 'wp_login', array( $this, 'login' ), 10, 2 );
+		add_action( 'clear_auth_cookie', array( $this, 'logout' ), 10 );
+		add_action( 'set_current_user', array( $this, 'login' ), 15 );
+		add_action( 'init', array( $this, 'reset_everyone' ), 15 );
 
 		// Register Shortcodes
-		add_shortcode( 'online:list', array( self::instance(), 'shortcode_list' ) );
-		add_shortcode( 'online:qty', array( self::instance(), 'shortcode_qty' ) );
+		add_shortcode( 'online:list', array( $this, 'shortcode_list' ) );
+		add_shortcode( 'online:qty', array( $this, 'shortcode_qty' ) );
 
 		// To allow easier control this plugin will parse the shortcodes on Widgets
 		add_filter( 'widget_text', 'do_shortcode' );
@@ -86,15 +86,20 @@ class OnlineNow {
 			return false;
 		}
 
-		// If the user is already in the list we leave
-		if ( in_array( $user->ID, $users ) ){
-			return false;
-		}
-
-		// Append the user ID to the List of online users
-		$users[] = $user->ID;
+		// Append this User to the List
+		$users[ $user->ID ] = date( 'Y-m-d H:i:s' );
 
 		return update_option( self::$prefix . '-users', $users );
+	}
+
+	/**
+	 * Fetches and allow filtering of the threshold for the amount of users that always should be shown online
+	 * Basically it won't allow de number of users Online to be below the number defined, by default 0;
+	 *
+	 * @return int
+	 */
+	public function get_purge_threshold() {
+		return (int) apply_filters( 'onlinenow-purge_threshold', self::$purge_threshold );
 	}
 
 	/**
@@ -116,11 +121,18 @@ class OnlineNow {
 		}
 
 		// If the user is not in the list we leave
-		if ( ! in_array( $user->ID, $users ) ){
+		if ( isset( $users[ $user->ID ] ) ){
 			return false;
 		}
 
-		return update_option( self::$prefix . '-users', array_diff( $users, array( $user->ID ) ) );
+		// Check if we can Remove from the List
+		if ( $this->get_purge_threshold() >= count( $users ) ) {
+			return false;
+		}
+
+		unset( $users[ $user->ID ] );
+
+		return update_option( self::$prefix . '-users', $users ) );
 	}
 
 	/**
@@ -131,7 +143,7 @@ class OnlineNow {
 		$current_timeout = get_option( self::$prefix . '-timeout', 0 );
 
 		if ( $current_timeout <= time() || true === $force ){
-			return update_option( self::$prefix . '-users', array( get_current_user_id() ) ) && update_option( self::$prefix . '-timeout', time() + $interval_timeout );
+			return update_option( self::$prefix . '-users', array( get_current_user_id() => date( 'Y-m-d H:i:s' ) ) ) && update_option( self::$prefix . '-timeout', time() + $interval_timeout );
 		}
 
 		return false;
@@ -152,13 +164,15 @@ class OnlineNow {
 
 		$users = $this->get_users();
 
-		return in_array( $user->ID, $users );
+		return isset( $users[ $user->ID ] );
 	}
 
 	/**
 	 * A method to grab the users online from the database
-	 * @param  array  $include [description]
-	 * @param  array  $exclude [description]
+	 *
+	 * @param  array  $include Ids of the users to include
+	 * @param  array  $exclude Ids of the users to exclude
+	 *
 	 * @return array           Users currently online, array of IDs
 	 */
 	public function get_users( $include = array(), $exclude = array() ) {
@@ -171,7 +185,15 @@ class OnlineNow {
 		}
 
 		// Exclude users based on shortcode attribute
-		$users = array_diff( (array) $users, (array) $exclude );
+		foreach ( (array) $exclude as $id ) {
+			// Prevent Fatals
+			if ( ! isset( $users[ $id ] ) ) {
+				continue;
+			}
+
+			// Actually Remove
+			unset( $users[ $id ] );
+		}
 
 		// Parse Shortcode atts to include
 		if ( is_string( $include ) ){
@@ -179,23 +201,44 @@ class OnlineNow {
 		}
 
 		// Include users based on shortcode attribute
-		$users = array_merge( (array) $users, (array) $include );
+		foreach ( (array) $include as $id ) {
+			// Prevent Fatals
+			if ( isset( $users[ $id ] ) ) {
+				continue;
+			}
 
-		// Garantee that the array is safe for usage
-		$users = array_unique( array_filter( (array) $users ) );
-
-		// Remove all non existent users
-		$users = array_map( array( $this, 'user_exists' ), $users );
+			// Actually include the user
+			$users[ $id ] = date( 'Y-m-d H:i:s' );
+		}
 
 		// Garantee that the array is safe for usage
 		$users = array_filter( (array) $users );
+
+		// Fetch the users IDs
+		$ids = array_keys( $users );
+
+		// Remove all non existent users
+		$existing_users = array_map( array( $this, 'user_exists' ), $ids );
+
+		// Loop and Unset non-existent
+		foreach ( (array) $existing_users as $id ) {
+			// Prevent Fatals
+			if ( ! isset( $users[ $id ] ) ) {
+				continue;
+			}
+
+			// Actually Remove
+			unset( $users[ $id ] );
+		}
 
 		return $users;
 	}
 
 	/**
 	 * Check if the user ID exists
+	 *
 	 * @param  int $user_id    The user id
+	 *
 	 * @return bool/WP_User    Returns the WP_User object if valid ID
 	 */
 	public function user_exists( $user_id ) {
@@ -213,6 +256,7 @@ class OnlineNow {
 	 * Based on the database option that we created in the methods above we will allow the admin to show it on a shortcode
 	 *
 	 * @param  string $atts The atributes from the shortcode
+	 *
 	 * @return string       The HTML of which users are online
 	 */
 	public function shortcode_list( $atts ) {
@@ -229,7 +273,7 @@ class OnlineNow {
 
 		if ( ! empty( $users ) ){
 			$html .= '<ul class="users-online">';
-			foreach ( (array) $users as $user ) {
+			foreach ( (array) $users as $user => $time ) {
 				$html .= '<li>';
 				// Allow the user to control the avatar size and if he wants to show
 				if ( is_numeric( $atts->avatar ) ){
@@ -282,8 +326,7 @@ class OnlineNow {
 }
 
 // Actually Load the plugin
-add_action( 'plugins_loaded', array( 'OnlineNow', 'init' ) );
-
+add_action( 'plugins_loaded', array( 'OnlineNow', 'instance' ) );
 
 /**
  * Creates a Globally Acessible version of OnlineNow->is_user_online()
