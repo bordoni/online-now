@@ -55,6 +55,7 @@ class OnlineNow {
 		add_action( 'clear_auth_cookie', array( $this, 'logout' ), 10 );
 		add_action( 'set_current_user', array( $this, 'login' ), 15 );
 		add_action( 'init', array( $this, 'reset_everyone' ), 15 );
+		add_action( 'init', array( $this, 'login' ), 20 );
 
 		// Register Shortcodes
 		add_shortcode( 'online:list', array( $this, 'shortcode_list' ) );
@@ -286,6 +287,8 @@ class OnlineNow {
 	public function shortcode_list( $atts ) {
 		$atts = (object) shortcode_atts( array(
 			'avatar' => false,
+			'name'   => true,
+			'link'   => false,
 
 			'exclude' => '',
 			'include' => '',
@@ -295,6 +298,8 @@ class OnlineNow {
 
 		$users = $this->get_users( $atts->include, $atts->exclude );
 		$objects = array();
+
+		// Builds the objects
 		foreach ( $users as $id => $time ) {
 			$objects[] = new WP_User( $id );
 		}
@@ -302,12 +307,44 @@ class OnlineNow {
 		if ( ! empty( $users ) ) {
 			$html .= '<ul class="users-online">';
 			foreach ( (array) $objects as $user ) {
+				// Always reset the Profile Link
+				$profile_link = null;
+
 				$html .= '<li>';
+
+				// Only start the link if we have the atts for it
+				if ( $atts->link ) {
+					// If the user can edit posts then show the author URL
+					if ( current_user_can( 'edit_posts' ) ) {
+						$profile_link = get_author_posts_url( $user->ID );
+					}
+
+					// Replace Author URL with BBPress profile link if available
+					if ( function_exists( 'bbp_user_profile_url' ) ) {
+						$profile_link = bbp_user_profile_url( $user->ID );
+					}
+
+					// Only Show the link if we have something
+					if ( ! empty( $profile_link ) ) {
+						$html .= sprintf( '<a href="%s">', $profile_link );
+					}
+				}
+
 				// Allow the user to control the avatar size and if he wants to show
-				if ( is_numeric( $atts->avatar ) ) {
+				if ( ! empty( $atts->avatar ) && is_numeric( $atts->avatar ) ) {
 					$html .= get_avatar( $user, $atts->avatar );
 				}
-				$html .= '<span>' . $user->display_name . '</span>';
+
+				// Allow control ver displaying the name
+				if ( $atts->name ) {
+					$html .= '<span>' . $user->display_name . '</span>';
+				}
+
+				// Only close link if we have the Link atts and a URL
+				if ( $atts->link && ! empty( $profile_link ) ) {
+					$html .= '</a>';
+				}
+
 				$html .= '</li>';
 			}
 			$html .= '</ul>';
