@@ -320,8 +320,8 @@ class OnlineNow {
 					}
 
 					// Replace Author URL with BBPress profile link if available
-					if ( function_exists( 'bbp_user_profile_url' ) ) {
-						$profile_link = bbp_user_profile_url( $user->ID );
+					if ( function_exists( 'bbp_get_user_profile_url' ) ) {
+						$profile_link = esc_url( bbp_get_user_profile_url( $user->ID ) );
 					}
 
 					// Only Show the link if we have something
