@@ -326,13 +326,13 @@ class OnlineNow {
 
 					// Only Show the link if we have something
 					if ( ! empty( $profile_link ) ) {
-						$html .= sprintf( '<a href="%s">', $profile_link );
+						$html .= sprintf( '<a href="%s" title="%s">', $profile_link, $user->display_name );
 					}
 				}
 
 				// Allow the user to control the avatar size and if he wants to show
 				if ( ! empty( $atts->avatar ) && is_numeric( $atts->avatar ) ) {
-					$html .= get_avatar( $user, $atts->avatar );
+					$html .= get_avatar( $user->ID, $atts->avatar );
 				}
 
 				// Allow control ver displaying the name
