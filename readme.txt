@@ -2,7 +2,7 @@
 Contributors:      bordoni
 Tags:              users, registred users, online, whos online
 Requires at least: 3.5
-Tested up to:      4.4
+Tested up to:      4.6
 Stable tag:        trunk
 License:           GPLv2 or later
 License URI:       http://www.gnu.org/licenses/gpl-2.0.html
@@ -26,6 +26,11 @@ Great! There are several ways you can get involved to help make Online Now bette
 Thank you for wanting to make Online Now better for everyone! [We salute you](https://www.youtube.com/watch?v=8fPf6L0XNvM).
 
 == Changelog ==
+
+= 0.3.0 =
+* Feature: Track Users by Time
+* Feature: Include a Minimum of Users to be displayed
+* Feature: Links to User Profiles
 
 = 0.2.1 =
 * Fix: Resolve the Login and Logout problem with non-existent user
